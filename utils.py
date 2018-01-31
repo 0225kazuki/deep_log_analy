@@ -9,8 +9,12 @@ import collections
 import matplotlib.pyplot as plt
 
 
-def dump2path(dump_name):
-  prefix="./nofilter/"
+def dump2path(dump_name, rp=False):
+#   prefix="./nofilter/"
+  if rp:
+    prefix="./datasets/rplinear_oneday/"
+  else:
+    prefix="./datasets/nofilter_oneday/"
   ext=".dump"
   lt_id = int(dump_name.split("_")[0])
   if lt_id < 500:
@@ -28,9 +32,9 @@ def path2dump(path):
   return path.split("/")[-1].split(".dump")[0]
 
 
-def load_dump(dump_name):
+def load_dump(dump_name, rp=False):
   if ".dump" not in dump_name:
-    path = dump2path(dump_name)
+    path = dump2path(dump_name, rp=rp); print(path)
     with open(path, "rb") as f:
       obj = pickle.load(f, encoding="bytes")
     return obj
@@ -40,8 +44,8 @@ def load_dump(dump_name):
     return obj
 
 
-def load_dump2df(dump_name, bin_size="sec"):
-  obj = load_dump(dump_name)
+def load_dump2df(dump_name, bin_size="sec", rp=False):
+  obj = load_dump(dump_name, rp=rp)
 
   if bin_size=="sec":
     bin_length = 86400
@@ -62,7 +66,7 @@ def load_dump2df(dump_name, bin_size="sec"):
   return all_data
 
 
-def make_dataset(dump_names, file_name, bin_size="sec"):
+def make_dataset(dump_names, file_name, bin_size="sec", rp=False):
   x_train = []
   x_labels = []
   x_date_labels = []
@@ -70,7 +74,7 @@ def make_dataset(dump_names, file_name, bin_size="sec"):
   for ev in dump_names:
     print("processing:", ev)
   
-    data = load_dump2df(ev, bin_size="min")
+    data = load_dump2df(ev, bin_size="min", rp=rp)
       
     for i in data.iteritems():
       x_labels.append(ev)
