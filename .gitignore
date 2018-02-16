@@ -1,6 +1,8 @@
 *
 !.gitignore
 !vae_model.py
+!cvae.py
+!train.py
 !deep_vae_model.py
 !vae_plot.py
 !vae_multimodel.py
