@@ -103,3 +103,20 @@ class train_cvae_graph:
                                                 self.keep_prob : 1}))
 
         return np.array(klds)
+
+    def reconst(self, X_test, X_test_labels):
+    
+        reconsts = []
+        config = tf.ConfigProto()
+        config.gpu_options.per_process_gpu_memory_fraction = 0.3
+        with tf.Session(config=config) as sess:
+            saver = tf.train.Saver()
+            saver.restore(sess, self.model_path)
+
+            for i,j in tqdm.tqdm(zip(X_test, X_test_labels), total=len(X_test)):
+                reconsts.append(sess.run([self.x_],
+                                     feed_dict={self.x_hat: i.reshape(1, -1),
+                                                self.y: j.reshape(1, -1),
+                                                self.keep_prob : 1}))
+
+        return np.array(reconsts)
