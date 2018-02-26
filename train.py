@@ -48,7 +48,7 @@ class train_cvae_graph:
         self.merged = tf.summary.merge_all()
         
 
-    def train(self, X_train, X_labels, batch_size, epochs):
+    def train(self, X_train, X_labels, batch_size, epochs, keep_prob=1.):
 
         if os.path.exists(self.plot_path):
             print("plot data exists. Removed {}".format(self.plot_path))
@@ -77,7 +77,7 @@ class train_cvae_graph:
 
                     summary, _, total_loss, loss_likelihood, loss_divergence = sess.run(
                         (self.merged, self.train_op, self.loss, self.neg_marginal_likelihood, self.KL_divergence),
-                        feed_dict={self.x_hat: X, self.x: X, self.y: Y, self.keep_prob: 1.})
+                        feed_dict={self.x_hat: X, self.x: X, self.y: Y, self.keep_prob: keep_prob})
                     self.train_writer.add_summary(summary, epoch)
                 
                 end = time.time() 
