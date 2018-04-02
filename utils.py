@@ -7,6 +7,7 @@ import pickle
 import datetime
 import collections
 import matplotlib.pyplot as plt
+import json
 
 
 def dump2path(dump_name, rp=False):
@@ -90,11 +91,11 @@ def make_dataset(dump_names, file_name, bin_size="sec", rp=False):
     pickle.dump([x_train, x_labels, x_date_labels], f)
 
 
-def plot_day(dump_name, date="all", bin_size="sec", description=False):
+def plot_day(dump_name, date="all", bin_size="sec", rp=False,  description=False):
   if "/" in dump_name:
     obj = load_dump(dump_name)
   else:
-    obj = load_dump(dump2path(dump_name))
+    obj = load_dump(dump2path(dump_name, rp=rp))
 
   if date == "all":
     plot_data = [row.time() for row in obj]
@@ -175,3 +176,22 @@ def plot_day(dump_name, date="all", bin_size="sec", description=False):
     print("coef:\t",coef_var)
     print("kurt:\t",kurt)
 
+
+def get_burst_date(ltid):
+    '''
+    return datetime.date list
+    '''
+    
+    try:
+        with open("burst_df.json", "r") as f:
+            burst = json.load(f)[ltid]
+    except:
+        burst = dict()
+
+    burst_date = []
+    for ts, data in burst.items():
+        if data != None:
+            d = datetime.datetime.fromtimestamp(int(int(ts)/1000))
+            burst_date.append(d.date())
+
+    return burst_date

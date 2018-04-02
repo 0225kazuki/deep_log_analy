@@ -104,6 +104,37 @@ class train_cvae_graph:
 
         return np.array(klds)
 
+
+    def latent_vars(self, X_test, X_test_labels):
+        zs = []
+        with tf.Session() as sess:
+            saver = tf.train.Saver()
+            saver.restore(sess, self.model_path)
+
+            for i,j in tqdm.tqdm(zip(X_test, X_test_labels), total=len(X_test)):
+                zs.append(sess.run(self.z,
+                                    feed_dict={self.x_hat: i.reshape(1, -1),
+                                                self.y: j.reshape(1, -1),
+                                                self.keep_prob: 1.}))
+            return np.array(zs)
+
+    def reconst_error(self, X_test, X_test_labels):
+    
+        mlhs = []
+        config = tf.ConfigProto(device_count={"GPU":0})
+        with tf.Session(config=config) as sess:
+            saver = tf.train.Saver()
+            saver.restore(sess, self.model_path)
+
+            for i,j in tqdm.tqdm(zip(X_test, X_test_labels), total=len(X_test)):
+                mlhs.append(sess.run([self.neg_marginal_likelihood],
+                                     feed_dict={self.x: i.reshape(1, -1),
+                                                self.x_hat: i.reshape(1, -1),
+                                                self.y: j.reshape(1, -1),
+                                                self.keep_prob : 1}))
+
+        return np.array(mlhs)
+
     def reconst(self, X_test, X_test_labels):
     
         reconsts = []
