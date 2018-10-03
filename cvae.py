@@ -15,7 +15,39 @@ def variable_summaries(var):
         tf.summary.histogram('histogram', var)
 
 
-def cvae_encoder(x, y, n_hidden, n_output, keep_prob):
+def batch_norm_wrapper(inputs, phase_train=None, decay=0.99):
+    epsilon = 1e-5
+    out_dim = inputs.get_shape()[-1]
+    scale = tf.Variable(tf.ones([out_dim]))
+    beta = tf.Variable(tf.zeros([out_dim]))
+    pop_mean = tf.Variable(tf.zeros([out_dim]), trainable=False)
+    pop_var = tf.Variable(tf.ones([out_dim]), trainable=False)
+
+    if phase_train == None:
+       return tf.nn.batch_normalization(inputs, pop_mean, pop_var, beta, scale, epsilon)
+
+    rank = len(inputs.get_shape())
+    # axes = range(rank - 1)  # nn:[0], conv:[0,1,2]
+    axes = [0]
+
+    batch_mean, batch_var = tf.nn.moments(inputs, axes)
+
+    ema = tf.train.ExponentialMovingAverage(decay=decay)
+
+    def update():  # Update ema.
+        ema_apply_op = ema.apply([batch_mean, batch_var])
+        with tf.control_dependencies([ema_apply_op]):
+            return tf.nn.batch_normalization(inputs, tf.identity(batch_mean), tf.identity(batch_var), beta, scale, epsilon)
+    def average():  # Use avarage of ema.
+        train_mean = pop_mean.assign(ema.average(batch_mean))
+        train_var = pop_var.assign(ema.average(batch_var))
+        with tf.control_dependencies([train_mean, train_var]):
+            return tf.nn.batch_normalization(inputs, train_mean, train_var, beta, scale, epsilon)
+
+    return tf.cond(phase_train, update, average)
+
+
+def cvae_encoder(x, y, n_hidden, n_output, keep_prob, phase_train=None):
     if type(n_hidden) != list:
         print("n_hidden should be list")
         return
@@ -40,6 +72,9 @@ def cvae_encoder(x, y, n_hidden, n_output, keep_prob):
                 b = tf.get_variable('b%i' % (l), [n_hidden[l]], initializer=b_init)
                 variable_summaries(b)
             h = tf.matmul(input_tensor, w) + b
+
+            # bn = batch_norm_wrapper(h, phase_train)
+
             with tf.name_scope("activated"):
                 h = tf.nn.elu(h)
                 variable_summaries(h)
@@ -64,7 +99,7 @@ def cvae_encoder(x, y, n_hidden, n_output, keep_prob):
     return mean, stddev
 
 
-def cvae_decoder(z, y, n_hidden, n_output, keep_prob, reuse=False):
+def cvae_decoder(z, y, n_hidden, n_output, keep_prob, reuse=False, phase_train=None):
     with tf.variable_scope('cvae_decoder', reuse=reuse):
         w_init = tf.contrib.layers.variance_scaling_initializer()
         b_init = tf.constant_initializer(0.)
@@ -81,6 +116,9 @@ def cvae_decoder(z, y, n_hidden, n_output, keep_prob, reuse=False):
                 b = tf.get_variable('b%i' % l, [n_hidden[-l]], initializer=b_init)
                 variable_summaries(b)
             h = tf.matmul(input_tensor, w) + b
+
+            # h = batch_norm_wrapper(h, phase_train)
+
             with tf.name_scope('activated'):
                 h = tf.nn.tanh(h)
                 variable_summaries(h)
@@ -98,14 +136,14 @@ def cvae_decoder(z, y, n_hidden, n_output, keep_prob, reuse=False):
     return x_
 
 
-def cvae(x_hat, x, y, dim_input, dim_z, n_hidden, keep_prob, mlh_rate=1.0, kld_rate=1.0):
+def cvae(x_hat, x, y, dim_input, dim_z, n_hidden, keep_prob, phase_train=None, mlh_rate=1.0, kld_rate=1.0):
 
-    mu, sigma = cvae_encoder(x_hat, y, n_hidden, dim_z, keep_prob)
+    mu, sigma = cvae_encoder(x_hat, y, n_hidden, dim_z, keep_prob, phase_train)
 
     # reperameterize
     z = mu + sigma * tf.random_normal(tf.shape(mu), 0, 1, dtype=tf.float32)
 
-    x_ = cvae_decoder(z, y, n_hidden, dim_input, keep_prob)
+    x_ = cvae_decoder(z, y, n_hidden, dim_input, keep_prob, phase_train=phase_train)
     x_ = tf.clip_by_value(x_, 1e-8, 1 - 1e-8)
 
     # ELBO

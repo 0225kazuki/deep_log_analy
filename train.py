@@ -1,3 +1,5 @@
+# -*- coding; utf-8 -*-
+
 import tensorflow as tf
 import numpy as np
 import cvae
@@ -5,6 +7,7 @@ import os
 import shutil
 import time 
 import tqdm 
+
 
 class train_cvae_graph:
     
@@ -18,6 +21,7 @@ class train_cvae_graph:
                 n_hidden=[512, 256, 128],
                 save_name=None,
                 save_path=None,
+                is_train=True,
                 plot_prefix="./tensorboard/",
                 model_prefix="./train_models/"): 
 
@@ -35,6 +39,7 @@ class train_cvae_graph:
         self.x = tf.placeholder(tf.float32, shape=[None, dim_input], name='targets')
         self.y = tf.placeholder(tf.float32, shape=[None, dim_label], name='input_labels')
         self.keep_prob = tf.placeholder(tf.float32, name='keep_prob')
+        self.phase_train = tf.placeholder(tf.bool, name='phase_train') if is_train else None
 
         self.x_, self.z, self.mu, self.sigma, self.loss, self.neg_marginal_likelihood, self.KL_divergence = cvae.cvae(self.x_hat, 
                                                                                          self.x, 
@@ -42,7 +47,8 @@ class train_cvae_graph:
                                                                                          dim_input, 
                                                                                          dim_z, 
                                                                                          n_hidden, 
-                                                                                         self.keep_prob)
+                                                                                         self.keep_prob,
+                                                                                         self.phase_train)
 
         self.train_op = tf.train.AdamOptimizer(learn_rate).minimize(self.loss)
         self.merged = tf.summary.merge_all()
@@ -77,7 +83,7 @@ class train_cvae_graph:
 
                     summary, _, total_loss, loss_likelihood, loss_divergence = sess.run(
                         (self.merged, self.train_op, self.loss, self.neg_marginal_likelihood, self.KL_divergence),
-                        feed_dict={self.x_hat: X, self.x: X, self.y: Y, self.keep_prob: keep_prob})
+                        feed_dict={self.x_hat: X, self.x: X, self.y: Y, self.keep_prob: keep_prob, self.phase_train: True})
                     self.train_writer.add_summary(summary, epoch)
                 
                 end = time.time() 
