@@ -10,6 +10,37 @@ import tqdm
 
 
 class train_cvae_graph:
+    """
+    CVAE training. evaluation class
+
+    Attributes
+    ----------
+    paramas : str
+        parameters string data used for tensorboard filename
+    x_hat : tf.placeholder
+        placeholder for input data
+    x : tf.placeholder
+        placeholder for target data (for computing the loss function)
+    y : tf.placeholder
+        placeholder for conditaional label
+    keep_prob : tf.placeholder
+        placeholder of dropout rate (keep unit with this rate)
+    phase_train : tf.placeholder
+        placeholder of training flag
+    x_ : tf.placeholder
+        placeholder of reconstructed data (output of decoder network)
+    z : tf.placeholder
+        placeholder of latent variables
+    mu : 
+    sigma
+    loss
+    neg_marginal_likelihood
+    KL_divergence
+    train_op
+    merged
+    train_writer
+
+    """
     
     def __init__(self, 
                 dim_input=1440,
@@ -24,6 +55,27 @@ class train_cvae_graph:
                 is_train=True,
                 plot_prefix="./tensorboard/",
                 model_prefix="./train_models/"): 
+        """
+        Parameters
+        ----------
+        dim_input : int
+        dim_z : int
+        dim_label : int
+            conditional label data dimension
+        n_epochs : int
+        batch_size : int
+        learn_rate : float
+        n_hidden : [int]
+            You can use any length list.
+            List length is the number of hidden layer.
+            Each component is the dimension for each hidden layer.
+        save_name : str
+        save_path : str
+        is_train : bool
+        plot_prefix : str
+        model_prefix :
+
+        """
 
         tf.reset_default_graph()
         self.params = "Zdim_{0}_Nhid_{1}".format(dim_z, "-".join([str(i) for i in n_hidden]))
@@ -55,6 +107,25 @@ class train_cvae_graph:
         
 
     def train(self, X_train, X_labels, batch_size, epochs, keep_prob=1.):
+        """
+        train CVAE model
+
+        Parameters
+        ----------
+        X_train : np.array(flaot32)
+        X_labels : np.array(float32)
+        batch_size : int
+        epochs : int
+        keep_prob : float
+
+        Returns
+        -------
+
+        Notes
+        -----
+        - remove existing plot data (for tensorboard) before training
+        - dump session into self.model_path directory
+        """
 
         if os.path.exists(self.plot_path):
             print("plot data exists. Removed {}".format(self.plot_path))
@@ -72,6 +143,7 @@ class train_cvae_graph:
                 print("epoch:", epoch)
                 st = time.time()
                 
+                # shuffle data
                 rnd_ind = np.arange(len(X_train))
                 np.random.shuffle(rnd_ind)
                 rnd_X = X_train[rnd_ind]
@@ -95,6 +167,25 @@ class train_cvae_graph:
 
 
     def evaluation(self, X_test, X_test_labels):
+        """
+        run evaluation
+
+        Parameters
+        ----------
+        X_test : np.array(float32)
+            input data
+        X_test_labels : np.array(float32)
+            conditional labels
+
+        Returns
+        -------
+        klds : np.array(float32)
+            KL-divergence array for each data point
+
+        Notes
+        -----
+        fetch trained model from self.model_path and compute KL-divergence from provided test data
+        """
     
         klds = []
         config = tf.ConfigProto(device_count={"GPU":0})
@@ -112,6 +203,26 @@ class train_cvae_graph:
 
 
     def latent_vars(self, X_test, X_test_labels):
+        """
+        compute latent variables
+
+        Parameters
+        ----------
+        X_test : np.array(float32)
+            input data
+        X_test_labels : np.array(float32)
+            conditional labels
+
+        Returns
+        -------
+        zs : np.array(float32)
+            Latent variables array for each data point
+
+        Notes
+        -----
+        fetch trained model from self.model_path and compute latent variables from provided test data
+        """
+
         zs = []
         with tf.Session() as sess:
             saver = tf.train.Saver()
@@ -124,7 +235,28 @@ class train_cvae_graph:
                                                 self.keep_prob: 1.}))
             return np.array(zs)
 
+
     def reconst_error(self, X_test, X_test_labels):
+        """
+        compute reconstruction error 
+
+        Parameters
+        ----------
+        X_test : np.array(float32)
+            input data
+        X_test_labels : np.array(float32)
+            conditional labels
+
+        Returns
+        -------
+        mlhs : np.array(float32)
+            Reconstruction errors array for each data point
+
+        Notes
+        -----
+        fetch trained model from self.model_path and 
+        compute reconstruction error (i.e., marginal liklehood) from provided test data
+        """
     
         mlhs = []
         config = tf.ConfigProto(device_count={"GPU":0})
@@ -142,6 +274,26 @@ class train_cvae_graph:
         return np.array(mlhs)
 
     def reconst(self, X_test, X_test_labels):
+        """
+        reconstruct provided data X_test 
+
+        Parameters
+        ----------
+        X_test : np.array(float32)
+            input data
+        X_test_labels : np.array(float32)
+            conditional labels
+
+        Returns
+        -------
+        reconsts : np.array(float32)
+            Reconstructtions array for each data point
+
+        Notes
+        -----
+        fetch trained model from self.model_path and 
+        reconstruct provided data
+        """
     
         reconsts = []
         config = tf.ConfigProto()
@@ -157,3 +309,4 @@ class train_cvae_graph:
                                                 self.keep_prob : 1}))
 
         return np.array(reconsts)
+

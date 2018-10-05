@@ -34,6 +34,22 @@ def path2dump(path):
 
 
 def load_dump(dump_name, rp=False):
+  """
+  load dump_name file
+
+  Parameters
+  ----------
+  dump_name : str
+    pickle dump file name or file path
+  rp : bool
+   if true, use replaced data
+
+  Notes
+  -----
+  If dump_name is not filpath (not including ext '.dump'),
+  generate filepath from dump2path
+  """
+
   if ".dump" not in dump_name:
     path = dump2path(dump_name, rp=rp); print(path)
     with open(path, "rb") as f:
