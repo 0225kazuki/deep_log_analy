@@ -88,7 +88,10 @@ class Clustering:
         #     assert
 
         # scaling KLD
-        scaled_data = np.array([[idx/456, val/kld.max()] for idx,val in enumerate(kld)])
+        if kld.max() == kld.min():
+            scaled_data = np.array([[idx/len(kld), val/kld.max()] for idx,val in enumerate(kld)])
+        else:
+            scaled_data = np.array([[idx/len(kld), (val-kld.min())/(kld.max()-kld.min())] for idx,val in enumerate(kld)])
 
         # store clustering resutls for each eps
         class_cnt = []
@@ -143,7 +146,7 @@ class Clustering:
         return all_maj_anomaly
 
 
-    def detect_anomaly(self, klds, num_labels=120, num_trials=10, verbose=False):
+    def detect_anomaly(self, klds, num_labels=120, num_trials=10, start="20120101", end="20130331", verbose=False):
         """
         
         Parameters
@@ -154,6 +157,7 @@ class Clustering:
         Returns
         -------
         all_maj_anomaly : list
+            converted to date index (20120101 - 201310331)
 
         Notes
         -----
@@ -166,10 +170,11 @@ class Clustering:
         all_anomaly = []
         for i in tqdm.tqdm(range(num_labels), total=num_labels):
             for cnt in range(num_trials):
-                data = klds[cnt][1].squeeze()[i*456:(i+1)*456]
+                data_length = int(klds[cnt][1].shape[0]/num_labels)
+                data = klds[cnt][1].squeeze()[i*data_length:(i+1)*data_length]
                 labels = self.clustering(data)
 
-                all_anomaly.extend([(i, d_.date()) for d_ in pd.date_range('20120101',"20130331")[np.where(labels==-1)[0]]])
+                all_anomaly.extend([(i, d_.date()) for d_ in pd.date_range(start, end)[np.where(labels==-1)[0]]])
 
         if verbose:
             print("ensembling...")
@@ -177,5 +182,4 @@ class Clustering:
         results = self.ensemble(all_anomaly)
 
         return results
-
 
